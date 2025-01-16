@@ -2,6 +2,7 @@ from openai import OpenAI
 import os
 import sys
 from dotenv import load_dotenv
+from engine.prompt_provider import messages
 
 class ChatClient:
     def __init__(self):
@@ -37,9 +38,10 @@ class ChatClient:
         
         while True:
             try:
-                # Get user input
-                user_input = input("\033[94mYou: \033[0m").strip()
                 
+                # Get user input
+                self.messages = messages.copy()
+                user_input = input("\033[94mYou: \033[0m").strip()
                 # Handle special commands
                 if user_input.lower() == 'quit':
                     print("\033[93mGoodbye!\033[0m")
