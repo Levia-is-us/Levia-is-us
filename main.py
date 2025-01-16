@@ -1,5 +1,4 @@
-def main():
-    print("Hello Levia!")
+from engine.run import run
 
 if __name__ == "__main__":
-    main() 
+    run()
