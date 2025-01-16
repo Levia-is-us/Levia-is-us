@@ -1,10 +1,8 @@
 # AI/ML
 openai>=1.59.7
 
-# 基础依赖
 requests>=2.26.0
 python-dotenv==1.0.1
 
-# 开发工具
 pytest>=6.2.5
 flake8>=3.9.2
