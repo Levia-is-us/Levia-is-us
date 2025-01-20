@@ -2,9 +2,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tool_framewotk.tool_runner import ToolRunner 
-from tool_framewotk.tool_run import run_tool
-from tool_framewotk import BaseTool
+from engine.tool_framework.tool_runner import ToolRunner 
+from engine.tool_framework.tool_run import run_tool
+from engine.tool_framework import BaseTool
 import requests
 
 @run_tool

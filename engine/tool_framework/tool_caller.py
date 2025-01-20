@@ -1,6 +1,6 @@
 from typing import Any, Optional, Dict, List
-from tool_framewotk.tool_registry import ToolRegistry
-from tool_framewotk import BaseTool
+from tool_framework.tool_registry import ToolRegistry
+from tool_framework import BaseTool
 import subprocess
 import json
 import sys

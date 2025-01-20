@@ -1,7 +1,7 @@
 from typing import Any, Optional, Dict
 import sys
 import json
-from tool_framewotk import BaseTool
+from tool_framework import BaseTool
 
 class ToolRunner:
     """Tool runner that handles stdio communication"""

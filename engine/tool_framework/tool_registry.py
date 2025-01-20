@@ -4,7 +4,7 @@ import inspect
 import importlib.util
 import os
 from typing import Dict, Any, Optional, Callable, Type, List
-from tool_framewotk import BaseTool
+from tool_framework import BaseTool
 
 
 from pathlib import Path
