@@ -1,6 +1,9 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 添加项目根目录到 Python 路径
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
 
 from engine.tool_framework.tool_runner import ToolRunner 
 from engine.tool_framework.tool_run import run_tool
