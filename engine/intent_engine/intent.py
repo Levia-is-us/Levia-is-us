@@ -4,17 +4,42 @@ import sys
 from dotenv import load_dotenv
 from engine.prompt_provider import messages
 
+from engine.tool_framework.tool_registry import ToolRegistry
+from engine.tool_framework.tool_caller import ToolCaller
+
 class ChatClient:
     def __init__(self):
         # Try to get API key from environment variable
-        load_dotenv()
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        env_path = os.path.join(project_root, '.env')
+        load_dotenv(env_path)
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             self.api_key = self._get_api_key()
         base_url = os.getenv("OPENAI_BASE_URL")
+        if not base_url:
+            print("\033[93mWarning: OPENAI_BASE_URL not found in .env file\033[0m")
         
         self.client = OpenAI(api_key=self.api_key, base_url=base_url)
         self.messages = []
+        registry = ToolRegistry()
+    
+        # Use absolute path
+        tools_dir = os.path.join(project_root, "tools")
+        print(f"Scanning tools from: {tools_dir}")
+        registry.scan_directory(tools_dir)  # Scan tools directory
+
+        # Create ToolCaller instance
+        self.caller = ToolCaller(registry)
+
+        tools = registry.list_tools()
+        print("Available tools:", len(tools))
+        for tool in tools:
+            print(f"Tool: {tool['name']}")
+            print(f"Description: {tool['description']}")
+            print("Methods:")
+            for method, info in tool['methods'].items():
+                print(f" - {method}{info['signature']}")
 
     def _get_api_key(self) -> str:
         """Get API key from user input"""
@@ -67,12 +92,31 @@ class ChatClient:
                 # Get and display response
                 reply = response.choices[0].message.content
                 print(f"\033[92mAssistant: {reply}\033[0m")
+                
+                # 解析Assistant返回的JSON
+                try:
+                    import json
+                    tool_response = json.loads(reply)
+                    tool_name = tool_response.get("tool")
+                    tool_method = tool_response.get("method")
+                    tool_args = tool_response.get("arguments", {})
+                    print(f"tool_args: {tool_args}")
+                    
+                    if tool_name and tool_method:
+                        print(f"调用工具: {tool_name}.{tool_method}，参数: {tool_args}")
+                        result = self.caller.call_tool(tool_name=tool_name, method=tool_method, kwargs=tool_args)
+                        print(f"工具返回: {result}")
+                except Exception as e:
+                    print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
 
                 # Save assistant reply to current session
-                self.messages.append({"role": "assistant", "content": reply})
+                # self.messages.append({"role": "assistant", "content": reply})
+
 
             except KeyboardInterrupt:
                 print("\n\033[93mProgram terminated\033[0m")
                 sys.exit(0)
             except Exception as e:
                 print(f"\033[91mError occurred: {str(e)}\033[0m")
+                # import traceback
+                # print(f"\033[91mDetailed error:\n{traceback.format_exc()}\033[0m")

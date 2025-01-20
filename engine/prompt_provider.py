@@ -1,5 +1,5 @@
 
-tools_description = "[{\"tool\":\"sendtwitter\", \"desc\":\"send twitter message\"}]"
+tools_description = "[{\"tool\":\"LocationTool\", \"method\": \"get_current_location\", \"desc\":\"Tool for getting location information\"}]"
 
 system_message = f"""You are a helpful assistant with access to these tools: 
 
@@ -9,6 +9,7 @@ system_message = f"""You are a helpful assistant with access to these tools:
                             IMPORTANT: When you need to use a tool, you must ONLY respond with the exact JSON object format below, nothing else:
                             {{
                                 "tool": "tool-name",
+                                "method": "method-name",
                                 "arguments": {{
                                     "argument-name": "value"
                                 }}

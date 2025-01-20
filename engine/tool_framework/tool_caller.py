@@ -11,7 +11,7 @@ class ToolCaller:
     def __init__(self, registry: ToolRegistry):
         self.registry = registry
 
-    def call_tool(self, tool_name: str, method: str, **kwargs) -> Optional[Dict]:
+    def call_tool(self, tool_name: str, method: str,kwargs: Dict) -> Optional[Dict]:
         """Call a specific tool method"""
         tool_path = self.registry.get_tool_path(tool_name)
         if not tool_path:
@@ -39,8 +39,10 @@ class ToolCaller:
             # Prepare input data
             input_data = {
                 "method": method,
-                "args": kwargs
             }
+            print(f"kwargs: {kwargs}")
+            if kwargs:  # 只有当kwargs不为空时才添加args {}
+                input_data["args"] = kwargs
 
             # Send input and get output
             print(f"Sending input to tool: {input_data}")
@@ -55,13 +57,16 @@ class ToolCaller:
             if real_stderr:
                 print(f"Tool stderr: {real_stderr}", file=sys.stderr)
 
+            print(f"stdout: {stdout}")
             if stdout:
                 try:
-                    result = json.loads(stdout)
+                    # 清理输出，移除前后的空白字符
+                    cleaned_stdout = stdout.strip()
+                    result = json.loads(cleaned_stdout)
                     print(f"Tool returned: {result}")
                     return result.get('result') if isinstance(result, dict) and 'result' in result else result
                 except json.JSONDecodeError as e:
-                    print(f"Failed to parse tool output: {stdout}", file=sys.stderr)
+                    print(f"Failed to parse tool output: {stdout!r}", file=sys.stderr)  # 使用!r显示原始字符串
                     return None
 
             print("Tool returned no output")

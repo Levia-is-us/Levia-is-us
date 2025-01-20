@@ -59,22 +59,26 @@ class ToolRegistry:
         return tools_info
 
     def scan_directory(self, directory: str) -> None:
-        """Scan directory for tool files and register them"""
-        tool_files = Path(directory).rglob("*_tool.py")
-        for tool_file in tool_files:
-            try:
-                # Load module
-                spec = importlib.util.spec_from_file_location(
-                    tool_file.stem, str(tool_file))
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+        """扫描目录及其子目录下的所有工具文件并注册"""
+        # 获取目录下所有Python文件
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                # 检查是否是工具文件(以_tool.py结尾)
+                if file.endswith('_tool.py'):
+                    tool_file = Path(root) / file
+                    try:
+                        # 加载模块
+                        spec = importlib.util.spec_from_file_location(
+                            tool_file.stem, str(tool_file))
+                        module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(module)
 
-                # Find and register tool classes
-                for item_name in dir(module):
-                    item = getattr(module, item_name)
-                    if (inspect.isclass(item) and 
-                        issubclass(item, BaseTool) and 
-                        item != BaseTool):
-                        self.register_tool(item, str(tool_file))
-            except Exception as e:
-                print(f"Error loading tool {tool_file}: {e}", file=sys.stderr)
+                        # 查找并注册工具类
+                        for item_name in dir(module):
+                            item = getattr(module, item_name)
+                            if (inspect.isclass(item) and 
+                                issubclass(item, BaseTool) and 
+                                item != BaseTool):
+                                self.register_tool(item, str(tool_file))
+                    except Exception as e:
+                        print(f"加载工具 {tool_file} 时出错: {e}", file=sys.stderr)
