@@ -60,7 +60,6 @@ class ToolCaller:
             print(f"stdout: {stdout}")
             if stdout:
                 try:
-                    # 清理输出，移除前后的空白字符
                     cleaned_stdout = stdout.strip()
                     result = json.loads(cleaned_stdout)
                     print(f"Tool returned: {result}")

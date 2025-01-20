@@ -93,7 +93,6 @@ class ChatClient:
                 reply = response.choices[0].message.content
                 print(f"\033[92mAssistant: {reply}\033[0m")
                 
-                # 解析Assistant返回的JSON
                 try:
                     import json
                     tool_response = json.loads(reply)
