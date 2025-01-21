@@ -15,8 +15,8 @@ class LocationTool(BaseTool):
     def __init__(self):
         super().__init__()
 
-    def get_current_location(self) -> dict:
-        """Get current location information"""
+    def get_current_location(self, ip_address: str = None) -> dict:
+        """Get location information for a specific IP address"""
         try:
             print("Getting location information...", file=sys.stderr)
             
@@ -27,9 +27,10 @@ class LocationTool(BaseTool):
                 'Accept-Language': 'en-US,en;q=0.9'
             }
             
-            # Use HTTPS protocol
+            # Use HTTPS protocol with specific IP if provided
+            url = f'https://ipapi.co/{ip_address}/json/' if ip_address else 'https://ipapi.co/json/'
             response = requests.get(
-                'https://ipapi.co/json/',  # Use ipapi.co API
+                url,  # Use ipapi.co API
                 headers=headers,
                 timeout=10
             )
