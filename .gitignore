@@ -8,9 +8,9 @@ venv/
 ENV/
 
 # License
-LICENSE
-*.license
-*.lic
+# LICENSE
+# *.license
+# *.lic
 
 # Python
 __pycache__/
@@ -40,3 +40,6 @@ wheels/
 *.swp
 *.swo
 .DS_Store 
+
+#env
+.env
