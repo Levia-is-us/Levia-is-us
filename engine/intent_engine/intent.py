@@ -131,7 +131,6 @@ class ChatClient:
                         else:
                             result["status"] = "failure"
                             # store_short_pass_memory(tool_name + tool_method, tool_response.get("desc"), {"status": "success"})
-                        # 使用参数化查询来防止SQL注入并正确处理特殊字符
                         sql = """
                             INSERT INTO levia_tool_excutor_history 
                             (toolId, uid, tool_excute_args, tool_response, creatTime) 
@@ -148,7 +147,7 @@ class ChatClient:
                 print(f"retrieve_long_pass_memory: {memories}")
 
                 # Save assistant reply to current session
-                # self.messages.append({"role": "assistant", "content": reply})
+                # self.messages.append({"role": "assistant", "content": reply}) 中文
 
 
             except KeyboardInterrupt:
