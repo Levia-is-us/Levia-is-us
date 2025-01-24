@@ -7,30 +7,23 @@ system_message = f"""You are a helpful assistant with access to these tools:
                             Choose the appropriate tool based on the user's question. If no tool is needed, reply directly.
                             
                             IMPORTANT: When you need to use a tool, you must ONLY respond with the exact JSON object format below, nothing else:
-                            [{
+                            {{
                                 "tool": "tool-name",
                                 "method": "method-name",
+                                "desc": "description of the tool execution",
                                 "arguments": {{
                                     "argument-name": "value"
-                                }},
-                                "desc": "description of the tool execution"
-                            }]
+                                }}
+                            }}
                             
                             After receiving a tool's response:
-                            1. Transform the raw dta into a natural, conversational response
+                            1. Transform the raw data into a natural, conversational response
                             2. Keep responses concise but informative
                             3. Focus on the most relevant information
                             4. Use appropriate context from the user's question
                             5. Avoid simply repeating the raw data
                             
                             Please use only the tools that are explicitly defined above."""
-
-messages = [
-    {
-        "role": "system",
-        "content": system_message
-    }
-]
 
 intents_system_prompt = """
                     When the user inputs a sentence, respond according to the following rules:
@@ -59,6 +52,13 @@ check_plan_fittable_prompt = """
                     }
                     }
                     """
+
+messages = [
+    {
+        "role": "system",
+        "content": intents_system_prompt
+    }
+]
 
 def next_step_prompt(workflow, current_step):
     next_step_prompt = f"""

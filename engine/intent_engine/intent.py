@@ -8,12 +8,12 @@ from engine.prompt_provider import messages
 from engine.tool_framework.tool_registry import ToolRegistry
 from engine.tool_framework.tool_caller import ToolCaller
 from memory.episodic_memory.episodic_memory import (
-    store_short_pass_memory,
     retrieve_short_pass_memory,
     store_long_pass_memory,
     retrieve_long_pass_memory
 )
 from engine.dbconnection.mysql_connector import MySQLPool
+from engine.prompt_provider import system_message
 
 db_pool = MySQLPool()
 
@@ -87,67 +87,70 @@ class ChatClient:
                 # Add user message
                 self.messages.append({"role": "user", "content": user_input})
 
-                # Call API for response
-                print("\033[93mThinking...\033[0m")
-                # response = self.client.chat.completions.create(
-                #     model="deepseek-chat",
-                #     messages=self.messages,
-                #     temperature=0.7
-                # )
-
-                reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                replyForUserInfo = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
 
                 # Get and display response
                 # reply = response.choices[0].message.content
-                print(f"\033[92mAssistant: {reply}\033[0m")
-
-                try:
-                    import json
-                    tool_response = json.loads(reply)
-                    tool_name = tool_response.get("tool")
-                    tool_method = tool_response.get("method")
-                    tool_args = tool_response.get("arguments", {})
-                    print(f"tool_args: {tool_args}")
+                print(f"\033[92mAssistant: {replyForUserInfo}\033[0m")
+                
+                memories = retrieve_long_pass_memory(replyForUserInfo)
+                high_score_memories = self.filter_high_score_memories(memories)
+                if high_score_memories:
+                    # Get the first (highest scoring) memory
+                    top_memory = high_score_memories[0]
+                    execution_records = top_memory["metadata"]["execution_records"]
                     
-                    execution_records = list()
-                    
-                    if tool_name and tool_method:
-                        print(f"toolname: {tool_name}.{tool_method} args: {tool_args}")
-                        result = self.caller.call_tool(tool_name=tool_name, method=tool_method, kwargs=tool_args)
-                        print(f"tool result: {result}")
-                        llm_confirmation = input("tool execution success or failure? (y/n): ")
-                        
-                        execution_record = {
-                            "tool": tool_name,
-                            "method": tool_method,
-                            "args": tool_args,
-                            "result": result,
-                            "status": "success" if llm_confirmation == "y" else "failure"
-                        }
-                        execution_records.append(str(execution_record))
-                        
-                        if llm_confirmation == "y":
-                            result["status"] = "success"
-                        else:
-                            result["status"] = "failure"
-                            # store_short_pass_memory(tool_name + tool_method, tool_response.get("desc"), {"status": "success"})
-                        sql = """
-                            INSERT INTO levia_tool_excutor_history 
-                            (toolId, uid, tool_excute_args, tool_response, creatTime) 
-                            VALUES (%s, %s, %s, %s, now())
-                        """
-                        tool_id = tool_name + tool_method
-                        db_pool.execute(sql, (tool_id, '123', str(tool_args), str(result)))
+                    for execution_record in execution_records:
+                        try:
+                            # Parse the execution record string back to dictionary if needed
+                            if isinstance(execution_record, str):
+                                execution_record = eval(execution_record)
                             
-                except Exception as e:
-                    print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
+                            result, record = self.execute_and_record_tool(
+                                execution_record["tool"],
+                                execution_record["method"],
+                                execution_record["args"]
+                            )
+                            
+                            print(f"Executed tool: {execution_record['tool']}.{execution_record['method']}")
+                            print(f"Result: {result}")
+                            
+                        except Exception as e:
+                            print(f"Error processing execution record: {str(e)}")
+                            continue
+                else:
+                    memories = retrieve_short_pass_memory(replyForUserInfo)
+                    print(f"retrieve_short_pass_memory: {memories}")
+                    self.messages.append({"role": "system", "content": system_message})
+                    reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                    print(f"\033[92mAssistant: {reply}\033[0m")
 
-                store_long_pass_memory(user_input, user_input, {"execution_records": execution_records})
-                memories = retrieve_long_pass_memory(user_input)
-                print(f"retrieve_long_pass_memory: {memories}")
+                    try:
+                        import json
+                        tool_response = json.loads(reply)
+                        tool_name = tool_response.get("tool")
+                        tool_method = tool_response.get("method")
+                        tool_args = tool_response.get("arguments", {})
+                        print(f"tool_args: {tool_args}")
+                        
+                        execution_records = list()
+                        
+                        if tool_name and tool_method:
+                            print(f"toolname: {tool_name}.{tool_method} args: {tool_args}")
+                            result, execution_record = self.execute_and_record_tool(
+                                tool_name, 
+                                tool_method, 
+                                tool_args
+                            )
+                            execution_records.append(execution_record)
+                            
+                    except Exception as e:
+                        print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
+
+                store_long_pass_memory(replyForUserInfo, replyForUserInfo, {"execution_records": execution_records})
 
                 # Save assistant reply to current session
-                # self.messages.append({"role": "assistant", "content": reply}) 中文
+                # self.messages.append({"role": "assistant", "content": reply})
 
 
             except KeyboardInterrupt:
@@ -157,3 +160,67 @@ class ChatClient:
                 print(f"\033[91mError occurred: {str(e)}\033[0m")
                 # import traceback
                 # print(f"\033[91mDetailed error:\n{traceback.format_exc()}\033[0m")
+
+    def filter_high_score_memories(self, memories, threshold=0.9):
+        """
+        Filter and sort memories by score
+        
+        Args:
+            memories: Memory matches dictionary
+            threshold: Minimum score threshold (default: 0.9)
+            
+        Returns:
+            list: Sorted high score matches in descending order
+        """
+        if not memories or 'matches' not in memories:
+            return []
+        
+        high_score_matches = [
+            match for match in memories['matches'] 
+            if match.get('score', 0) >= threshold
+        ]
+        
+        # Sort matches by score in descending order
+        sorted_matches = sorted(
+            high_score_matches,
+            key=lambda x: x.get('score', 0),
+            reverse=True
+        )
+        
+        return sorted_matches
+
+    def execute_and_record_tool(self, tool_name, tool_method, tool_args):
+        """
+        Execute tool and record execution results
+        
+        Args:
+            tool_name: Name of the tool
+            tool_method: Method to be executed
+            tool_args: Arguments for the tool        
+        Returns:
+            tuple: (execution_result, execution_record)
+        """
+        result = self.caller.call_tool(tool_name=tool_name, method=tool_method, kwargs=tool_args)
+        print(f"tool result: {result}")
+        llm_confirmation = input("tool execution success or failure? (y/n): ")
+        
+        execution_record = {
+            "tool": tool_name,
+            "method": tool_method,
+            "args": tool_args,
+            "result": result,
+            "status": "success" if llm_confirmation == "y" else "failure"
+        }
+        
+        result["status"] = "success" if llm_confirmation == "y" else "failure"
+        
+        # Record to database
+        sql = """
+            INSERT INTO levia_tool_excutor_history 
+            (toolId, uid, tool_excute_args, tool_response, creatTime) 
+            VALUES (%s, %s, %s, %s, now())
+        """
+        tool_id = tool_name + tool_method
+        db_pool.execute(sql, (tool_id, '123', str(tool_args), str(result)))
+        
+        return result, str(execution_record)
