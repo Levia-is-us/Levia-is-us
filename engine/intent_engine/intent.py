@@ -111,8 +111,10 @@ class ChatClient:
 
     def _get_initial_response(self):
         """Get initial response from LLM"""
-        self.messages.append({"role": "system", "content": intents_system_prompt})
-        reply_info = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+        print(f"self.messages: {self.messages}")
+        prompt = [{"role": "system", "content": intents_system_prompt}] + self.messages
+        print(f"prompt: {prompt}")
+        reply_info = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
         reply_info = eval(reply_info)
         # print(f"replyForUserInfo: {reply_info}")
         return reply_info
@@ -129,10 +131,7 @@ class ChatClient:
         memories = retrieve_long_pass_memory(summary)
         high_score_memories = self.filter_high_score_memories(memories)
         
-        if high_score_memories:
-            self._process_existing_memories(high_score_memories, summary, execution_records_str)
-        else:
-            self._process_new_intent(summary, execution_records_str)
+        self._process_existing_memories(high_score_memories, summary, execution_records_str)
         
         store_long_pass_memory(summary, summary, {"execution_records": execution_records_str})
 
@@ -197,16 +196,17 @@ class ChatClient:
                     reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
                     print(f"\033[92mAssistant: {reply}\033[0m")
                     continue
-                all_memories.append(memories)
+                all_memories.append(memories["matches"][0]["metadata"])
+                print(f"all_memories: {all_memories}")
 
             for memory in all_memories:
-                next_step_prompt_content = next_step_prompt(plan, memory["matches"][1]["metadata"])
+                next_step_prompt_content = next_step_prompt(all_memories, memory)
         #         prompt = [{"role": "system", "content": next_step_prompt_content}]
         # # prompt.append({"role": "assistant", "content": self.messages})
         #         prompt.append({"role": "user", "content": summary})
                 # plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
-                self.messages.append({"role": "system", "content": next_step_prompt_content})
-                reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                prompt = [{"role": "system", "content": next_step_prompt_content}] + self.messages
+                reply = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
                 print(f"\033[92mAssistant: {reply}\033[0m")
         else:
             memories = retrieve_short_pass_memory(summary)
@@ -217,10 +217,29 @@ class ChatClient:
             
             try:
                 import json
-                tool_response = json.loads(reply)
+                # 改进 JSON 解析
+                try:
+                    tool_response = json.loads(reply)
+                except json.JSONDecodeError:
+                    print(f"\033[91mInvalid JSON response: {reply}\033[0m")
+                    return
+                    
+                if not isinstance(tool_response, dict):
+                    print(f"\033[91mExpected dict response, got: {type(tool_response)}\033[0m")
+                    return
+                    
+                tool_name = tool_response.get("tool")
+                tool_method = tool_response.get("method")
+                tool_args = tool_response.get("arguments", {})
+                
+                if not all([tool_name, tool_method]):
+                    print("\033[91mMissing required tool information\033[0m")
+                    return
+                    
                 self._execute_tool_response(tool_response, execution_records_str)
+                
             except Exception as e:
-                print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
+                print(f"\033[91mError processing tool response: {str(e)}\033[0m")
 
     def _execute_tool_response(self, tool_response, execution_records_str):
         """Execute tool based on response"""
