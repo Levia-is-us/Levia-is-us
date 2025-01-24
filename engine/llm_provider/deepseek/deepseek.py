@@ -3,8 +3,6 @@ from openai import OpenAI
 import os
 
 api_key = os.getenv("DEEPSEEK_API_KEY")
-host = os.getenv("DEEPSEEK_BASE_URL")
-
 
 def chat_completion_deepseek(messages, model="deepseek-chat", config={}):
     """
@@ -18,7 +16,7 @@ def chat_completion_deepseek(messages, model="deepseek-chat", config={}):
     - model reply message content
     """
     try:
-        client = OpenAI(base_url=host, api_key=api_key)
+        client = OpenAI(base_url="https://api.deepseek.com", api_key=api_key)
         completion_params = {
             "model": model,
             "messages": messages,

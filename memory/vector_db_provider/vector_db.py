@@ -11,8 +11,10 @@ def save_memory(id: str, vector: list, metadata: dict, namespace: str):
         "values": vector,
         "metadata": metadata,
     }
-
-    vector_db.upsert([input_embedding], namespace)
+    try:
+        vector_db.upsert([input_embedding], namespace)
+    except Exception as e:
+        print(f"\033[91mError upserting memory: {str(e)}\033[0m")
 
 
 def retrieve_memory(vector: list, namespace: str, top_k: int = 10):

@@ -12,9 +12,15 @@ def store_short_pass_memory(
     namespace: str = short_pass_namespace,
     uid: str = "levia",
 ):
-    metadata["uid"] = uid
-    embedding = create_embedding(memory)
-    save_memory(id, embedding, metadata, namespace)
+    try:
+        metadata["uid"] = uid
+        for key, value in metadata.items():
+            if isinstance(value, dict):
+                metadata[key] = str(value)
+        embedding = create_embedding(memory)
+        save_memory(id, embedding, metadata, namespace)
+    except Exception as e:
+        print(f"\033[91mError storing short pass memory: {str(e)}\033[0m")
 
 
 def retrieve_short_pass_memory(
@@ -26,19 +32,27 @@ def retrieve_short_pass_memory(
 
 
 def store_long_pass_memory(
+    id: str,
     memory: str,
     metadata: dict,
     namespace: str = long_pass_namespace,
     uid: str = "levia",
 ):
-    metadata["uid"] = uid
-    embedding = create_embedding(memory)
-    save_memory(embedding, metadata, namespace)
+    try:
+        metadata["uid"] = uid
+        for key, value in metadata.items():
+            if isinstance(value, dict):
+                metadata[key] = str(value)
+        embedding = create_embedding(memory)
+        save_memory(id, embedding, metadata, namespace)
+    except Exception as e:
+        print(f"\033[91mError storing long pass memory: {str(e)}\033[0m")
 
 
 def retrieve_long_pass_memory(
     query: str, namespace: str = long_pass_namespace, uid: str = "levia"
 ):
+
     embedding = create_embedding(query)
     memories = retrieve_memory(embedding, namespace)
     return memories

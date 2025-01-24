@@ -8,3 +8,6 @@ black>=23.3.0
 typing-extensions>=4.7.1
 anthropic
 pinecone
+pymysql>=1.0.2
+DBUtils>=3.0.2
+typing>=3.7.4
