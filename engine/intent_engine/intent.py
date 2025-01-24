@@ -13,7 +13,9 @@ from memory.episodic_memory.episodic_memory import (
     retrieve_long_pass_memory
 )
 from engine.dbconnection.mysql_connector import MySQLPool
-from engine.prompt_provider import system_message
+from engine.prompt_provider import system_message, check_plan_fittable_prompt, next_step_prompt, check_tools_result_prompt
+from engine.flow.evaluator.evaluator_docgen_flow import extract_json_from_doc
+
 
 db_pool = MySQLPool()
 
@@ -88,66 +90,120 @@ class ChatClient:
                 self.messages.append({"role": "user", "content": user_input})
 
                 replyForUserInfo = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                
+                replyForUserInfo = eval(replyForUserInfo)
+
+                print(f"replyForUserInfo: {replyForUserInfo}")
 
                 # Get and display response
                 # reply = response.choices[0].message.content
-                print(f"\033[92mAssistant: {replyForUserInfo}\033[0m")
-                
-                memories = retrieve_long_pass_memory(replyForUserInfo)
-                high_score_memories = self.filter_high_score_memories(memories)
-                if high_score_memories:
-                    # Get the first (highest scoring) memory
-                    top_memory = high_score_memories[0]
-                    execution_records = top_memory["metadata"]["execution_records"]
+                if replyForUserInfo["type"] == "direct_answer":
+                    print(f"\033[92mAssistant: {replyForUserInfo['response']}\033[0m")
+                    continue
+                elif replyForUserInfo["type"] == "intent_summary":
+                    summary = replyForUserInfo["summary"]
+                    execution_records_str = []
                     
-                    for execution_record in execution_records:
+                    memories = retrieve_long_pass_memory(summary)
+                    high_score_memories = self.filter_high_score_memories(memories)
+
+                    if high_score_memories:
+                        # Get the first (highest scoring) memory
+                        top_memory = high_score_memories[0]
+                        execution_record_str = top_memory["metadata"]["execution_records"]
+                        execution_records = [eval(record) for record in top_memory["metadata"]["execution_records"]]
+
+                        memories_check_prompt = [{"role": "system", "content": check_plan_fittable_prompt}]
+                        memories_check_prompt.append({"role": "user", "content": f"Intent A: {summary}"})
+                        memories_check_prompt.append({"role": "user", "content": f"Intent B: {top_memory['id']}"})
+                        memories_check_prompt.append({"role": "user", "content": f"Proposed Solution: {execution_records}"})
+
+                        memories_check_result = chat_completion(memories_check_prompt, model="deepseek-chat", config={"temperature": 0.7})
                         try:
-                            # Parse the execution record string back to dictionary if needed
-                            if isinstance(execution_record, str):
-                                execution_record = eval(execution_record)
+                            memories_check_result = eval(memories_check_result)
+                        except:
+                            memories_check_result = extract_json_from_doc(memories_check_result)
+                        # print(f"memories_check_result: {memories_check_result}")
+                        if memories_check_result["solution_sufficient"]['result'] == True or memories_check_result["solution_sufficient"]['result'] == "true":
+
+                            for execution_record in execution_records:
+                                try:
+                                    # Parse the execution record string back to dictionary if needed
+                                    if isinstance(execution_record, str):
+                                        execution_record = eval(execution_record)
+                                    
+                                    result, record = self.execute_and_record_tool(
+                                        execution_record,
+                                        execution_record["tool"],
+                                        execution_record["method"],
+                                        execution_record["args"]
+                                    )
+                                    
+                                    print(f"Executed tool: {execution_record['tool']}.{execution_record['method']}")
+                                    print(f"Result: {result}")
+                                    
+                                except Exception as e:
+                                    print(f"Error processing execution record: {str(e)}")
+                                    continue
+                        else:
+                            memories = retrieve_short_pass_memory(replyForUserInfo)
+                            print(f"retrieve_short_pass_memory: {memories}")
+                            self.messages.append({"role": "system", "content": system_message})
+                            reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                            print(f"\033[92mAssistant: {reply}\033[0m")
+
+                            try:
+                                import json
+                                tool_response = json.loads(reply)
+                                tool_name = tool_response.get("tool")
+                                tool_method = tool_response.get("method")
+                                tool_args = tool_response.get("arguments", {})
+                                tool_record = {'tool': tool_name, 'method': tool_method, 'args': tool_args}
+                                print(f"tool_args: {tool_args}")
+                                
+                                if tool_name and tool_method:
+                                    print(f"toolname: {tool_name}.{tool_method} args: {tool_args}")
+                                    result, execution_record = self.execute_and_record_tool(
+                                        tool_record,
+                                        tool_name, 
+                                        tool_method, 
+                                        tool_args
+                                    )
+                                    execution_records.append(execution_record)
+                                    
+                            except Exception as e:
+                                print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
+                                continue
+                    else:
+                        memories = retrieve_short_pass_memory(replyForUserInfo)
+                        print(f"retrieve_short_pass_memory: {memories}")
+                        self.messages.append({"role": "system", "content": system_message})
+                        reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                        print(f"\033[92mAssistant: {reply}\033[0m")
+
+                        try:
+                            import json
+                            tool_response = json.loads(reply)
+                            tool_name = tool_response.get("tool")
+                            tool_method = tool_response.get("method")
+                            tool_args = tool_response.get("arguments", {})
+                            tool_record = {'tool': tool_name, 'method': tool_method, 'args': tool_args}
+                            print(f"tool_args: {tool_args}")
                             
-                            result, record = self.execute_and_record_tool(
-                                execution_record["tool"],
-                                execution_record["method"],
-                                execution_record["args"]
-                            )
-                            
-                            print(f"Executed tool: {execution_record['tool']}.{execution_record['method']}")
-                            print(f"Result: {result}")
-                            
+                            if tool_name and tool_method:
+                                print(f"toolname: {tool_name}.{tool_method} args: {tool_args}")
+                                result, execution_record = self.execute_and_record_tool(
+                                    tool_record,
+                                    tool_name, 
+                                    tool_method, 
+                                    tool_args
+                                )
+                                execution_records_str.append(execution_record)
+                                
                         except Exception as e:
-                            print(f"Error processing execution record: {str(e)}")
-                            continue
-                else:
-                    memories = retrieve_short_pass_memory(replyForUserInfo)
-                    print(f"retrieve_short_pass_memory: {memories}")
-                    self.messages.append({"role": "system", "content": system_message})
-                    reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
-                    print(f"\033[92mAssistant: {reply}\033[0m")
+                            print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
 
-                    try:
-                        import json
-                        tool_response = json.loads(reply)
-                        tool_name = tool_response.get("tool")
-                        tool_method = tool_response.get("method")
-                        tool_args = tool_response.get("arguments", {})
-                        print(f"tool_args: {tool_args}")
-                        
-                        execution_records = list()
-                        
-                        if tool_name and tool_method:
-                            print(f"toolname: {tool_name}.{tool_method} args: {tool_args}")
-                            result, execution_record = self.execute_and_record_tool(
-                                tool_name, 
-                                tool_method, 
-                                tool_args
-                            )
-                            execution_records.append(execution_record)
-                            
-                    except Exception as e:
-                        print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
-
-                store_long_pass_memory(replyForUserInfo, replyForUserInfo, {"execution_records": execution_records})
+                    store_long_pass_memory(summary, summary, {"execution_records": execution_records_str})
 
                 # Save assistant reply to current session
                 # self.messages.append({"role": "assistant", "content": reply})
@@ -161,7 +217,7 @@ class ChatClient:
                 # import traceback
                 # print(f"\033[91mDetailed error:\n{traceback.format_exc()}\033[0m")
 
-    def filter_high_score_memories(self, memories, threshold=0.9):
+    def filter_high_score_memories(self, memories, threshold=0):
         """
         Filter and sort memories by score
         
@@ -189,7 +245,7 @@ class ChatClient:
         
         return sorted_matches
 
-    def execute_and_record_tool(self, tool_name, tool_method, tool_args):
+    def execute_and_record_tool(self, execution_record, tool_name, tool_method, tool_args):
         """
         Execute tool and record execution results
         
@@ -200,19 +256,25 @@ class ChatClient:
         Returns:
             tuple: (execution_result, execution_record)
         """
+        print(f"execution_record: {execution_record}")
         result = self.caller.call_tool(tool_name=tool_name, method=tool_method, kwargs=tool_args)
         print(f"tool result: {result}")
-        llm_confirmation = input("tool execution success or failure? (y/n): ")
-        
+        llm_check_prompt = check_tools_result_prompt(tool_excution=f"{execution_record}", tool_output=result)
+        llm_confirmation = chat_completion(llm_check_prompt, model="deepseek-chat", config={"temperature": 0.7})
+        print(f"llm_confirmation: {llm_confirmation}")
+
+        try:
+            llm_confirmation = eval(llm_confirmation)
+        except:
+            llm_confirmation = extract_json_from_doc(llm_confirmation)
+
         execution_record = {
             "tool": tool_name,
             "method": tool_method,
             "args": tool_args,
             "result": result,
-            "status": "success" if llm_confirmation == "y" else "failure"
+            "status": "success" if llm_confirmation["status"] == "success" else "failure"
         }
-        
-        result["status"] = "success" if llm_confirmation == "y" else "failure"
         
         # Record to database
         sql = """

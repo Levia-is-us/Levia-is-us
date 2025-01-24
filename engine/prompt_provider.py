@@ -26,11 +26,20 @@ system_message = f"""You are a helpful assistant with access to these tools:
                             Please use only the tools that are explicitly defined above."""
 
 intents_system_prompt = """
-                    When the user inputs a sentence, respond according to the following rules:
+                        When the user inputs a sentence, respond in the following JSON format:
 
-                    1. If the input is a question or request that can be directly answered or fulfilled by a large language model, provide the answer directly.
-                    2. If the input is a question or request that cannot be directly answered or fulfilled by a large language model (e.g., requires physical action, purchasing items, or other actions beyond the model's capabilities), summarize the user's intent or goal in a clear and concise manner. The summary should only describe what the user wants to achieve, without any additional output.
-                    Ensure the response strictly adheres to these rules.
+                        1. If the input is a question or request that can be solved directly by a large language model, output:
+                        {
+                            "type": "direct_answer",
+                            "response": "[Your answer here]"
+                        }
+                            make sure the response does not directly answer can not solve the problem.
+                        2. If the input is a question or request that cannot be directly answered or fulfilled by a large language model (e.g., requires physical action, purchasing items, or actions beyond the model's capabilities), output a summary as short as possible:
+                        {
+                            "type": "intent_summary",
+                            "summary": "[Summarize the user's intent or goal here]"
+                        }
+                        Ensure all responses strictly follow this JSON structure for consistent processing.
                     """
 
 check_plan_fittable_prompt = """
@@ -45,12 +54,12 @@ check_plan_fittable_prompt = """
                     "intent_match": {
                         "result": true/false,
                         "reason": "Brief explanation of whether Intent A and Intent B match or not."
-                    },
+                    }
                     "solution_sufficient": {
                         "result": true/false,
                         "reason": "Brief explanation of whether the proposed solution satisfies Intent A."
                     }
-                    }
+                    }          
                     """
 
 messages = [
@@ -135,7 +144,21 @@ def next_step_prompt(workflow, current_step):
                             "remarks": "<natural language explanation if applicable>"
                         }]
                         """
+    return next_step_prompt
 
+def check_tools_result_prompt(tool_excution, tool_output):
+    messages = []
+    prompt = f"""Analyze the tool's output and generate a JSON response with the following structure:
 
-
+                                    - status: The execution status of the tool, categorized as one of the following:
+                                    1. success: Tool executed successfully, including errors caused by incorrect parameters.
+                                    2. tool_error: Tool execution failed due to a code-related error.
+                                    3. unknown_error: Unable to determine the status from the output.
+                                    - error_reason: A detailed explanation of the status and, if applicable, the specific cause of the error.
+                                    Ensure the JSON response is clear, structured, and easy to parse.
+                                    """
+    messages.append({"role": "system", "content": prompt})
+    messages.append({"role": "user", "content": f"tool_excution: {tool_excution}"})
+    messages.append({"role": "user", "content": f"tool_output: {tool_output}"})
+    return messages
 
