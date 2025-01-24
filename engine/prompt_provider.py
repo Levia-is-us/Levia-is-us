@@ -1,4 +1,3 @@
-
 tools_description = "[{\"tool\":\"LocationTool\", \"method\": \"get_current_location\", \"desc\":\"Tool for getting location information\"},"
 tools_description += "{\"tool\":\"TwitterTool\", \"method\": \"send_tweet\", \"desc\":\"Tool for sending tweet\"},"
 tools_description += "{\"tool\":\"WebsiteScraperTool\", \"method\": \"website_scraper\", \"desc\":\"Tool for scraping website\"}]"
@@ -27,20 +26,20 @@ system_message = f"""You are a helpful assistant with access to these tools:
                             
                             Please use only the tools that are explicitly defined above."""
 
-intents_system_prompt = """
+intents_system_prompt = f"""
                         When the user inputs a sentence, respond in the following JSON format:
 
                         1. If the input is a question or request that can be solved directly by a large language model, output:
-                        {
+                        {{
                             "type": "direct_answer",
                             "response": "[Your answer here]"
-                        }
+                        }}
                             make sure the response does not directly answer can not solve the problem.
                         2. If the input is a question or request that cannot be directly answered or fulfilled by a large language model (e.g., requires physical action, purchasing items, or actions beyond the model's capabilities), output a summary as short as possible:
-                        {
+                        {{
                             "type": "intent_summary",
                             "summary": "[Summarize the user's intent or goal here]"
-                        }
+                        }}
                         Ensure all responses strictly follow this JSON structure for consistent processing.
                     """
 
@@ -67,81 +66,45 @@ check_plan_fittable_prompt = """
 messages = []
 
 def next_step_prompt(workflow, current_step):
-    next_step_prompt = f"""
-                        You are provided with a workflow consisting of multiple tools. Each tool has a name, method, required arguments, optional arguments, and an expected output. The workflow executes tools sequentially. The input for the workflow may consist of natural language, structured data, key-value pairs, or a mix of these formats. Your task is to evaluate whether the input and the outputs from previously executed tools provide sufficient information to proceed with each tool in the workflow.
+    prompt_template = f"""You are provided with a workflow consisting of multiple tools. Each tool has a name, method, required arguments, optional arguments, and an expected output. The workflow executes tools sequentially. The input for the workflow may consist of natural language, structured data, key-value pairs, or a mix of these formats. Your task is to evaluate whether the input and the outputs from previously executed tools provide sufficient information to proceed with each tool in the workflow.
 
-                        Here is the workflow: {workflow}
-                        [{
-                            "tool": "BBC_news",
-                            "method": "find_news",
-                            "requirement_arguments": [],
-                            "optional_arguments": [
-                                {"argument-name": "date"},
-                                {"argument-name": "type_of_news"},
-                                {"argument-name": "key_words"}
-                            ],
-                            "output": [{"time":"datetime","news":"news"},{"time":"datetime","news":"news"},{"time":"datetime","news":"news"}]
-                        }, {
-                            "tool": "tweet_tool",
-                            "method": "send_tweet",
-                            "requirement_arguments": [
-                                {"argument-name": "account"}, {"argument-name": "password"}, {"argument-name": "tweets"}
-                            ],
-                            "optional_arguments": [
-                                {"argument-name": "time"}
-                            ],
-                            "output": "output"
-                        }]
+        Here is the workflow: {workflow}
 
-                        next step is : {current_step}
-                        {
-                            "tool": "BBC_news",
-                            "method": "find_news",
-                            "requirement_arguments": [],
-                            "optional_arguments": [
-                                {"argument-name": "date"},
-                                {"argument-name": "type_of_news"},
-                                {"argument-name": "key_words"}
-                            ],
-                            "output": "[{"time":"datetime","news":"news"},{"time":"datetime","news":"news"},{"time":"datetime","news":"news"}]
-                        }
+        next step is : {current_step}
 
-                        For each step in the following workflow:
+        For each step in the following workflow:
 
-                        1. Extract Arguments: Identify all required and optional arguments provided from the input and previous outputs.
+        1. Extract Arguments: Identify all required and optional arguments provided from the input and previous outputs.
 
-                        2. Validation:
+        2. Validation:
 
-                        - Confirm if all required arguments for the current tool are satisfied.
-                        - Evaluate if any optional arguments are needed and determine if they can be derived from the input or previous outputs.
+        - Confirm if all required arguments for the current tool are satisfied.
+        - Evaluate if any optional arguments are needed and determine if they can be derived from the input or previous outputs.
 
-                        Action:
+        Action:
 
-                        If all required arguments are present and no critical information is missing, only output a json fit the arguments of next format, do not output anthing else:
-                        {
-                            "step": "<current step number>",
-                            "can_proceed": true,
-                            "extracted_arguments": {
-                                "required_arguments": {
-                                    "<argument-name>": "<value>"
-                                },
-                                "optional_arguments": {
-                                    "<argument-name>": "<value>"
-                                }
-                            }
-                        }
+        If all required arguments are present and no critical information is missing, only output a json fit the arguments of next format, do not output anthing else:
+        {
+            "step": "<current step number>",
+            "can_proceed": true,
+            "extracted_arguments": {
+                "required_arguments": {
+                    "<argument-name>": "value"
+                }
+            }
+        }
 
-                        If the step cannot proceed, output the following format with details of missing information:
-                        Output your results in the following only JSON format for programmatic processing:
-                        [{
-                            "step": "<current step number>",
-                            "can_proceed": <true/false>,
-                            "missing_required_arguments": [<list of missing required arguments>],
-                            "needed_optional_arguments": [<list of optional arguments that are required>],
-                            "remarks": "<natural language explanation if applicable>"
-                        }]
-                        """
-    return next_step_prompt
+        If the step cannot proceed, output the following format with details of missing information:
+        Output your results in the following only JSON format for programmatic processing:
+        {{
+            "step": "<current step number>",
+            "can_proceed": <true/false>,
+            "missing_required_arguments": [<list of missing required arguments>],
+            "needed_optional_arguments": [<list of optional arguments that are required>],
+            "remarks": "<natural language explanation if applicable>"
+        }}"""
+            
+    return prompt_template.format(workflow=workflow, current_step=current_step)
 
 def check_tools_result_prompt(tool_excution, tool_output):
     messages = []

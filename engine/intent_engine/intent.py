@@ -13,7 +13,7 @@ from memory.episodic_memory.episodic_memory import (
     retrieve_long_pass_memory
 )
 from engine.dbconnection.mysql_connector import MySQLPool
-from engine.prompt_provider import system_message, check_plan_fittable_prompt, next_step_prompt, check_tools_result_prompt, intents_system_prompt, process_new_intent_prompt
+from engine.prompt_provider import system_message, check_plan_fittable_prompt, next_step_prompt, check_tools_result_prompt, intents_system_prompt, plan_maker_prompt
 from engine.flow.evaluator.evaluator_docgen_flow import extract_json_from_doc
 
 
@@ -73,7 +73,7 @@ class ChatClient:
                 if user_input is None:  # User entered 'quit'
                     break
                     
-                reply_info = self._get_initial_response(user_input)
+                reply_info = self._get_initial_response()
                 
                 if reply_info["type"] == "direct_answer":
                     self._handle_direct_answer(reply_info)
@@ -109,12 +109,10 @@ class ChatClient:
         self.messages.append({"role": "user", "content": user_input})
         return user_input
 
-    def _get_initial_response(self, user_input):
+    def _get_initial_response(self):
         """Get initial response from LLM"""
-        prompt = {"role": "system", "content": intents_system_prompt}
-        prompt.append({"role": "user", "content": self.messages})
-        prompt.append({"role": "user", "content": user_input})
-        reply_info = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
+        self.messages.append({"role": "system", "content": intents_system_prompt})
+        reply_info = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
         reply_info = eval(reply_info)
         # print(f"replyForUserInfo: {reply_info}")
         return reply_info
@@ -146,7 +144,8 @@ class ChatClient:
         if self._check_solution_sufficient(summary, top_memory, execution_records):
             self._execute_existing_records(execution_records)
         else:
-            self._handle_new_tool_execution(execution_records_str, summary)
+            plan = self._process_new_intent(summary)
+            self._handle_new_tool_execution(execution_records_str, summary, plan)
 
     def _check_solution_sufficient(self, summary, top_memory, execution_records):
         """Check if the existing solution is sufficient for current intent"""
@@ -186,20 +185,42 @@ class ChatClient:
                 print(f"Error processing execution record: {str(e)}")
                 continue
 
-    def _handle_new_tool_execution(self, execution_records_str, summary):
+    def _handle_new_tool_execution(self, execution_records_str, summary, plan):
         """Handle execution of new tools"""
-        memories = retrieve_short_pass_memory(summary)
-        # print(f"retrieve_short_pass_memory: {memories}")
-        self.messages.append({"role": "system", "content": system_message})
-        reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
-        print(f"\033[92mAssistant: {reply}\033[0m")
-        
-        try:
-            import json
-            tool_response = json.loads(reply)
-            self._execute_tool_response(tool_response, execution_records_str)
-        except Exception as e:
-            print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
+        plan_steps = eval(plan)
+        if len(plan_steps) > 1:
+            all_memories = []
+            for step in plan_steps:
+                memories = retrieve_short_pass_memory(step["Description"])
+                if not memories:
+                    self.messages.append({"role": "system", "content": system_message})
+                    reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                    print(f"\033[92mAssistant: {reply}\033[0m")
+                    continue
+                all_memories.append(memories)
+
+            for memory in all_memories:
+                next_step_prompt_content = next_step_prompt(plan, memory["matches"][1]["metadata"])
+        #         prompt = [{"role": "system", "content": next_step_prompt_content}]
+        # # prompt.append({"role": "assistant", "content": self.messages})
+        #         prompt.append({"role": "user", "content": summary})
+                # plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
+                self.messages.append({"role": "system", "content": next_step_prompt_content})
+                reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+                print(f"\033[92mAssistant: {reply}\033[0m")
+        else:
+            memories = retrieve_short_pass_memory(summary)
+            # print(f"retrieve_short_pass_memory: {memories}")
+            self.messages.append({"role": "system", "content": system_message})
+            reply = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+            print(f"\033[92mAssistant: {reply}\033[0m")
+            
+            try:
+                import json
+                tool_response = json.loads(reply)
+                self._execute_tool_response(tool_response, execution_records_str)
+            except Exception as e:
+                print(f"\033[91mError parsing JSON: {str(e)}\033[0m")
 
     def _execute_tool_response(self, tool_response, execution_records_str):
         """Execute tool based on response"""
@@ -289,9 +310,10 @@ class ChatClient:
         
         return result, str(execution_record)
     
-    def _process_new_intent(self, summary, execution_records_str):
-        prompt = {"role": "system", "content": process_new_intent_prompt}
-        prompt.append({"role": "assistant", "content": self.messages})
+    def _process_new_intent(self, summary):
+        prompt = [{"role": "system", "content": plan_maker_prompt}]
+        # prompt.append({"role": "assistant", "content": self.messages})
         prompt.append({"role": "user", "content": summary})
         plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
-        print(f"plan: {plan}")    
+        print(f"plan: {plan}")
+        return plan
