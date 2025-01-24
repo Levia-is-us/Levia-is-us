@@ -41,7 +41,7 @@ class ToolCaller:
                 "method": method,
             }
             print(f"kwargs: {kwargs}")
-            if kwargs:  # 只有当kwargs不为空时才添加args {}
+            if kwargs:
                 input_data["args"] = kwargs
 
             # Send input and get output

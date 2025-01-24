@@ -1,5 +1,7 @@
 
-tools_description = "[{\"tool\":\"LocationTool\", \"method\": \"get_current_location\", \"desc\":\"Tool for getting location information\"}]"
+tools_description = "[{\"tool\":\"LocationTool\", \"method\": \"get_current_location\", \"desc\":\"Tool for getting location information\"},"
+tools_description += "{\"tool\":\"TwitterTool\", \"method\": \"send_tweet\", \"desc\":\"Tool for sending tweet\"},"
+tools_description += "{\"tool\":\"WebsiteScraperTool\", \"method\": \"website_scraper\", \"desc\":\"Tool for scraping website\"}]"
 
 system_message = f"""You are a helpful assistant with access to these tools: 
 
