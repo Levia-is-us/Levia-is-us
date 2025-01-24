@@ -13,7 +13,7 @@ from memory.episodic_memory.episodic_memory import (
     retrieve_long_pass_memory
 )
 from engine.dbconnection.mysql_connector import MySQLPool
-from engine.prompt_provider import system_message, check_plan_fittable_prompt, next_step_prompt, check_tools_result_prompt
+from engine.prompt_provider import system_message, check_plan_fittable_prompt, next_step_prompt, check_tools_result_prompt, intents_system_prompt, process_new_intent_prompt
 from engine.flow.evaluator.evaluator_docgen_flow import extract_json_from_doc
 
 
@@ -26,7 +26,6 @@ class ChatClient:
         env_path = os.path.join(project_root, '.env')
         load_dotenv(env_path)
         self.api_key = os.getenv("OPENAI_API_KEY")
-        print(f"api_key: {self.api_key}")
         if not self.api_key:
             self.api_key = self._get_api_key()
         base_url = os.getenv("OPENAI_BASE_URL")
@@ -112,7 +111,10 @@ class ChatClient:
 
     def _get_initial_response(self, user_input):
         """Get initial response from LLM"""
-        reply_info = chat_completion(self.messages, model="deepseek-chat", config={"temperature": 0.7})
+        prompt = {"role": "system", "content": intents_system_prompt}
+        prompt.append({"role": "user", "content": self.messages})
+        prompt.append({"role": "user", "content": user_input})
+        reply_info = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
         reply_info = eval(reply_info)
         # print(f"replyForUserInfo: {reply_info}")
         return reply_info
@@ -132,7 +134,7 @@ class ChatClient:
         if high_score_memories:
             self._process_existing_memories(high_score_memories, summary, execution_records_str)
         else:
-            self._process_new_intent(reply_info, execution_records_str)
+            self._process_new_intent(summary, execution_records_str)
         
         store_long_pass_memory(summary, summary, {"execution_records": execution_records_str})
 
@@ -286,3 +288,10 @@ class ChatClient:
         db_pool.execute(sql, (tool_id, '123', str(tool_args), str(result)))
         
         return result, str(execution_record)
+    
+    def _process_new_intent(self, summary, execution_records_str):
+        prompt = {"role": "system", "content": process_new_intent_prompt}
+        prompt.append({"role": "assistant", "content": self.messages})
+        prompt.append({"role": "user", "content": summary})
+        plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
+        print(f"plan: {plan}")    

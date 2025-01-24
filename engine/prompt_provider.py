@@ -64,12 +64,7 @@ check_plan_fittable_prompt = """
                     }          
                     """
 
-messages = [
-    {
-        "role": "system",
-        "content": intents_system_prompt
-    }
-]
+messages = []
 
 def next_step_prompt(workflow, current_step):
     next_step_prompt = f"""
@@ -164,3 +159,28 @@ def check_tools_result_prompt(tool_excution, tool_output):
     messages.append({"role": "user", "content": f"tool_output: {tool_output}"})
     return messages
 
+plan_maker_prompt = """
+                    Based on the given input, identify and list only the tasks that cannot be completed by an LLM. For each task, include:
+
+                    1. Name: A clear title for the task.
+                    2. Description: A concise description of what needs to be done for this task.
+                    Input:
+                    {Provide the user input here}
+
+                    Context:
+                    {Provide relevant background information here}
+
+                    Output:
+                    Provide the results in the following format:
+                    [
+                    {
+                        "Name": "Task 1 Name",
+                        "Description": "Explanation of why this task cannot be completed by an LLM."
+                    },
+                    {
+                        "Name": "Task 2 Name",
+                        "Description": "Explanation of why this task cannot be completed by an LLM."
+                    },
+                    ...
+                    ]
+                    """
