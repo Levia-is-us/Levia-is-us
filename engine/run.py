@@ -1,7 +1,7 @@
-from engine.intent_engine.intent import ChatClient
+# from engine.intent_engine.intent import ChatClient
+from engine.intent_engine.intent import chat
 
 def run():
-    chat_client = ChatClient()
-    chat_client.chat()
+    chat()
 
 __all__ = ['run']
