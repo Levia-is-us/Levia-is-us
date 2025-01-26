@@ -18,7 +18,10 @@ def extract_json_from_doc(doc):
         start = doc.find("```json") + len("```json")
         end = doc.find("```", start)
         doc = doc[start:end].strip()
-    return json.loads(doc)
+        return json.loads(doc)
+    else:
+        return eval(doc)
+
 
 
 def extract_code_breakdown_from_doc(doc):

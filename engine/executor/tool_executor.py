@@ -38,11 +38,8 @@ def verify_tool_execution(execution_record: dict, result: dict) -> str:
         config={"temperature": 0.7}
     )
     
-    try:
-        llm_confirmation = eval(llm_confirmation)
-    except:
-        llm_confirmation = extract_json_from_doc(llm_confirmation)
-        
+    llm_confirmation = extract_json_from_doc(llm_confirmation)
+    #todo: add error handling
     return "success" if llm_confirmation["status"] == "success" else "failure"
 
 def record_tool_execution(tool_name: str, tool_method: str, args: dict, result: dict):

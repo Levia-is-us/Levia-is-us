@@ -9,7 +9,7 @@ from engine.tool_framework import BaseTool
 @run_tool
 class TwitterTool(BaseTool):
 
-    def send_tweet(self, tweet: str):
+    def send_tweet(self, tweet: str, username: str, password: str):
         # print(f"Sending tweet: {tweet}")
         return "send tweet success, tweetId is 123"
     

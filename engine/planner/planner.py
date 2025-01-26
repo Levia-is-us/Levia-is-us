@@ -13,12 +13,12 @@ def create_execution_plan(summary: str) -> str:
     print(f"plan: {plan}")
     return plan
 
-def check_plan_sufficiency(summary: str, memory: dict, execution_records: list) -> bool:
+def check_plan_sufficiency(summary: str, plan: str, execution_records: list) -> bool:
     """Check if existing plan is sufficient for current intent"""
     memories_check_prompt = [
         {"role": "system", "content": check_plan_fittable_prompt},
         {"role": "user", "content": f"Intent A: {summary}"},
-        {"role": "user", "content": f"Intent B: {memory['id']}"},
+        {"role": "user", "content": f"Intent B: {plan}"},
         {"role": "user", "content": f"Proposed Solution: {execution_records}"}
     ]
     
