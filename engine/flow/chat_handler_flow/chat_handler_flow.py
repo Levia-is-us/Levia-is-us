@@ -26,6 +26,7 @@ def handle_chat_flow(chat_messages: list, user_input: str, tool_caller) -> None:
     
     # Get initial response
     reply_info = get_initial_response(chat_messages)
+    print(f"reply_info: {reply_info}")
     
     # Handle different response types
     if reply_info["type"] == "direct_answer":

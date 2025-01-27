@@ -8,7 +8,7 @@ import json
 def evaluator_docgen_flow(code):
     prompt = create_evaluator_docgen_prompt(code)
     result = chat_completion(
-        prompt, model="deepseek-reasoner", config={"temperature": 0, "max_tokens": 4000}
+        prompt, model="deepseek-chat", config={"temperature": 0, "max_tokens": 4000}
     )
     return result
 

@@ -23,11 +23,15 @@ def process_existing_memories(high_score_memories: list, summary: str, execution
     top_memory = high_score_memories[0]
     execution_records = [eval(record) for record in top_memory["metadata"]["execution_records"]]
     
-    if check_plan_sufficiency(summary, top_memory["id"], execution_records):
-        execute_existing_records(execution_records, tool_caller)
-    else:
-        plan = create_execution_plan(summary)
-        handle_new_tool_execution(execution_records_str, summary, plan, tool_caller, messages_history)
+    try:
+        if check_plan_sufficiency(summary, top_memory["id"], execution_records):
+            execute_existing_records(execution_records, tool_caller)
+            return
+    except Exception as e:
+        print(f"execute existing records error: {str(e)}")
+    
+    plan = create_execution_plan(summary)
+    handle_new_tool_execution(execution_records_str, summary, plan, tool_caller, messages_history)
 
 def execute_existing_records(execution_records: list, tool_caller) -> None:
     """Execute existing tool records"""
@@ -40,6 +44,7 @@ def execute_existing_records(execution_records: list, tool_caller) -> None:
             print(f"Result: {result}")
         except Exception as e:
             print(f"Error processing execution record: {str(e)}")
+            raise e
 
 def process_new_intent(summary: str, execution_records_str: list, messages_history: list, tool_caller) -> None:
     """Process new intent without existing memories"""

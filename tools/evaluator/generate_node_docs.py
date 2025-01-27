@@ -20,7 +20,7 @@ if __name__ == "__main__":
 else:
     project_root = os.path.dirname(os.path.abspath(__file__))
 
-node_path = os.path.join(project_root, "nodes")
+node_path = os.path.join(project_root, "tools")
 print(node_path)
 
 from memory.episodic_memory.episodic_memory import store_short_pass_memory
@@ -33,7 +33,12 @@ from engine.flow.evaluator.evaluator_docgen_flow import (
 for folder in os.listdir(node_path):
     if os.path.isdir(os.path.join(node_path, folder)):
         print(folder)
-        main_file = os.path.join(node_path, folder, "main.py")
+        main_file = os.path.join(node_path, folder, "*_tool.py")
+        main_files = [f for f in os.listdir(os.path.join(node_path, folder)) if f.endswith("_tool.py")]
+        if main_files:
+            main_file = os.path.join(node_path, folder, main_files[0])
+        else:
+            continue
         if os.path.exists(main_file) and not os.path.exists(
             os.path.join(node_path, folder, "docs.md")
         ):
@@ -59,5 +64,5 @@ for folder in os.listdir(node_path):
                     }
 
                     store_short_pass_memory(
-                        folder + "-" + function["name"], short_description, metadata
+                        function["name"], short_description, metadata
                     )

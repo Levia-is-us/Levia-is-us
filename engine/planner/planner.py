@@ -9,7 +9,7 @@ def create_execution_plan(summary: str) -> str:
         {"role": "system", "content": plan_maker_prompt},
         {"role": "user", "content": summary}
     ]
-    plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
+    plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.3})
     print(f"plan: {plan}")
     return plan
 
