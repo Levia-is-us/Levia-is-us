@@ -64,5 +64,5 @@ for folder in os.listdir(node_path):
                     }
 
                     store_short_pass_memory(
-                        function["name"], short_description, metadata
+                        function["tool"], short_description, metadata
                     )

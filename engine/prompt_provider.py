@@ -102,7 +102,7 @@ def next_step_prompt(plan, current_step):
 
                             Action:
 
-                            If all required arguments are present and no critical information is missing, only output a json fit the arguments of next format, do not output anthing else:
+                            If all required arguments are present and no critical information is missing, only output a json fit the 3 arguments of next format, do not output anthing else:
                             {{
                                 "step": "<current step number>",
                                 "can_proceed": true,

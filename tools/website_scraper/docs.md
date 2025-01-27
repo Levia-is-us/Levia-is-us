@@ -1,54 +1,46 @@
 <code_breakdown>
-1. Identified function names:
-   - website_scraper
-   - main
+Functions identified in the code:
+1. website_scraper
+2. main
 
-2. Function: website_scraper
-   i. Function signature: @simple_tool("Website Scraper Tool") def website_scraper(url: str)
-   ii. Parameters:
-       - url: str (required)
-   iii. Return value: str (hardcoded string about AI agent identity)
-   iv. Purpose: Acts as a website scraper tool, though currently returns a hardcoded string
-   v. Notable aspects: Decorated with @simple_tool, suggesting it's part of a larger framework
-   vi. Edge cases: No actual scraping functionality implemented, always returns same string
+Function: website_scraper(url: str)
+- Input parameters:
+  - url: str (required) - The URL of the website to be scraped.
+- Output:
+  - Description: A string containing information about AI agents' identity.
+  - Data type: str
+- Short description: "Website Scraper Tool"
+- Detailed description: This function is a simple tool for scraping websites. It takes a URL as input and returns a string containing information about AI agents' identity.
 
-3. Function: main
-   i. Function signature: def main()
-   ii. Parameters: None
-   iii. Return value: None (implicit)
-   iv. Purpose: Entry point that initializes and runs the website scraper tool
-   v. Notable aspects: Creates ToolRunner instance, demonstrates framework usage
-   vi. Edge cases: No error handling for tool initialization or execution
+Function: main()
+- Input parameters: None
+- Output: None
+- Short description: N/A
+- Detailed description: This function serves as the entry point of the program. It creates an instance of the website_scraper tool and runs it using the ToolRunner class.
+
 </code_breakdown>
+
+Here is the JSON output:
 
 ```json
 {
   "functions": [
     {
-      "name": "website_scraper",
-      "short_description": "Website scraping tool returning AI identity description",
-      "detailed_description": "A tool function decorated with @simple_tool that currently returns a hardcoded string about AI agent identity instead of actual website scraping. It's part of a larger tool framework and accepts a URL parameter, though the parameter is not currently utilized in the implementation.",
+      "method": "website_scraper",
+      "tool": "Website Scraper Tool",
+      "short_description": "Website Scraper Tool",
+      "detailed_description": "This function is a simple tool for scraping websites. It takes a URL as input and returns a string containing information about AI agents' identity.",
       "inputs": [
         {
           "name": "url",
           "type": "str",
           "required": true,
-          "description": "URL of website to scrape, though currently unused in implementation"
+          "description": "The URL of the website to be scraped."
         }
       ],
       "output": {
-        "description": "Hardcoded string describing AI agent identity concepts",
+        "description": "A string containing information about AI agents' identity.",
         "type": "str"
-      }
-    },
-    {
-      "name": "main",
-      "short_description": "Entry point for running website scraper tool",
-      "detailed_description": "The main function serves as the entry point for the application. It initializes the website scraper tool, creates a ToolRunner instance with the tool, and executes it. This function demonstrates how the tool framework is meant to be used, though it currently lacks error handling and additional configuration options.",
-      "inputs": [],
-      "output": {
-        "description": "No explicit return value",
-        "type": "None"
       }
     }
   ]

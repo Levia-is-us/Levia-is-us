@@ -2,6 +2,7 @@ from engine.prompt_provider import plan_maker_prompt
 from engine.llm_provider.llm import chat_completion
 from engine.flow.evaluator.evaluator_docgen_flow import extract_json_from_doc
 from engine.prompt_provider import  check_plan_fittable_prompt
+import json
 
 def create_execution_plan(summary: str) -> str:
     """Create execution plan for given intent summary"""
@@ -15,6 +16,9 @@ def create_execution_plan(summary: str) -> str:
 
 def check_plan_sufficiency(summary: str, plan: str, execution_records: list) -> bool:
     """Check if existing plan is sufficient for current intent"""
+    print(f"summary: {summary}")
+    print(f"plan: {plan}")
+    print(f"execution_records: {execution_records}")
     memories_check_prompt = [
         {"role": "system", "content": check_plan_fittable_prompt},
         {"role": "user", "content": f"Intent A: {summary}"},
@@ -24,8 +28,10 @@ def check_plan_sufficiency(summary: str, plan: str, execution_records: list) -> 
     
     result = chat_completion(memories_check_prompt, model="deepseek-chat", 
                            config={"temperature": 0.7})
+    print(f"result: {result}")
+    print(f"type of result: {type(result)}")
     try:
-        result = eval(result)
+        result = json.loads(result)
     except:
         result = extract_json_from_doc(result)
     

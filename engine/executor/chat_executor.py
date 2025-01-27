@@ -38,7 +38,7 @@ def execute_existing_records(execution_records: list, tool_caller) -> None:
     for record in execution_records:
         try:
             if isinstance(record, str):
-                record = eval(record)
+                record = extract_json_from_doc(record)
             result, _ = execute_tool(tool_caller, record["tool"], record["method"], record["args"])
             print(f"Executed tool: {record['tool']}.{record['method']}")
             print(f"Result: {result}")
@@ -50,7 +50,7 @@ def process_new_intent(summary: str, execution_records_str: list, messages_histo
     """Process new intent without existing memories"""
     memories = retrieve_short_pass_memory(summary)
     messages_history.append({"role": "system", "content": system_message})
-    reply = chat_completion(messages_history, model="deepseek-chat", config={"temperature": 0.7})
+    reply = chat_completion(messages_history, model="deepseek-chat", config={"temperature": 0.3})
     print(f"\033[92mAssistant: {reply}\033[0m")
     
     try:
@@ -100,24 +100,27 @@ def handle_new_tool_execution(execution_records_str, summary, plan, tool_caller,
             if not findTool:
                 print(f"\033[91mNo tool found for step: {step['Description']}\033[0m")
                 return
-
+            
             for tool in tools:
+                tool_dict = extract_json_from_doc(tool)
+                print(f"tool_dict: {tool_dict}")
                 while True:
-                    next_step_prompt_content = next_step_prompt(tools, tool)
+                    next_step_prompt_content = next_step_prompt(tools, tool_dict)
                     prompt = [{"role": "system", "content": next_step_prompt_content}] + messages_history
-                    reply = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
-                    try:
-                        replyJson = eval(reply)
-                    except Exception as e:
-                        replyJson = extract_json_from_doc(reply)
+                    reply = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.5})
+
+                    replyJson = extract_json_from_doc(reply)
                     print(f"\033[92mAssistant: {replyJson}\033[0m")
                     if(replyJson["can_proceed"] == True):
-                        required_arguments = replyJson["extracted_arguments"]["arguments"]
-                        res = execute_tool(tool_caller, tool["tool"], tool["method"], required_arguments)
-                        verify_res = verify_tool_execution(tool["desc"], res)
+                        if "arguments" in replyJson["extracted_arguments"]:
+                            required_arguments = replyJson["extracted_arguments"]["arguments"]
+                        else:
+                            required_arguments = {}
+                        res = execute_tool(tool_caller, tool_dict["tool"], tool_dict["method"], required_arguments)
+                        verify_res = verify_tool_execution(tool_dict, res)
                         if(verify_res == "success"):
                             execution_records_str.append(tool)
-                            messages_history.append({"role": "assistant", "content":  tool["tool"] + " result: " + str(res)})
+                            messages_history.append({"role": "assistant", "content":  tool_dict["tool"] + " result: " + str(res)})
                             print(f"\033[92mResult: {res}\033[0m")
                             break
                     else:

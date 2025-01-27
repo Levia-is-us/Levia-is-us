@@ -41,7 +41,8 @@ Please follow these steps to analyze the code and generate the required output:
 {
   "functions": [
     {
-      "name": "function_name",
+      "method": "method_name",
+      "tool": "method_name"+"_tool",
       "short_description": "Concise, searchable description of function purpose",
       "detailed_description": "Detailed explanation of what the function does and how to use it",
       "inputs": [
