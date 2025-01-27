@@ -1,6 +1,6 @@
-tools_description = "[{\"tool\":\"LocationTool\", \"method\": \"get_current_location\", \"desc\":\"Tool for getting location information\"},"
-tools_description += "{\"tool\":\"TwitterTool\", \"method\": \"send_tweet\", \"desc\":\"Tool for post content on twitter\", \"arguments\": [\"tweet\", \"username\", \"password\"]},"
-tools_description += "{\"tool\":\"WebsiteScraperTool\", \"method\": \"website_scraper\", \"desc\":\"Tool for scraping website\"}]"
+tools_description = "[{\"tool\":\"get_current_location_tool\", \"method\": \"get_current_location\", \"desc\":\"Tool for getting location information\"},"
+tools_description += "{\"tool\":\"send_tweet_tool\", \"method\": \"send_tweet\", \"desc\":\"Tool for post content on twitter\", \"arguments\": [\"tweet\", \"username\", \"password\"]},"
+tools_description += "{\"tool\":\"website_scraper_tool\", \"method\": \"website_scraper\", \"desc\":\"Tool for scraping website\"}]"
 
 system_message = f"""You are a helpful assistant with access to these tools: 
 

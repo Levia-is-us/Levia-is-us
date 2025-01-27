@@ -14,7 +14,7 @@ def main():
 
     # Create ToolCaller instance
     caller = ToolCaller(registry)
-    result = caller.call_tool(tool_name="WebsiteScraperTool", method="website_scraper", kwargs={"url": "https://google.com"})
+    result = caller.call_tool(tool_name="website_scraper_tool", method="website_scraper", kwargs={"url": "https://google.com"})
     
     if result:
         if 'error' in result:

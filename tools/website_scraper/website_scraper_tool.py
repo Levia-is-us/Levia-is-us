@@ -3,17 +3,15 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 from engine.tool_framework.tool_runner import ToolRunner 
-from engine.tool_framework.tool_run import run_tool
-from engine.tool_framework import BaseTool
+from engine.tool_framework import simple_tool
 
-@run_tool
-class WebsiteScraperTool(BaseTool):
 
-    def website_scraper (self, url: str):
-        return "In the world of AI agents, identity is more than just a collection of parameters - it's the essence of what makes each agent unique and persistent. Think of an agent's identity as its soul, carrying not just identification but personality, memories, relationships, and learned behaviors."
+@simple_tool("Website Scraper Tool")
+def website_scraper(url: str):
+    return "In the world of AI agents, identity is more than just a collection of parameters - it's the essence of what makes each agent unique and persistent. Think of an agent's identity as its soul, carrying not just identification but personality, memories, relationships, and learned behaviors."
     
 def main():
-    tool = WebsiteScraperTool()
+    tool = website_scraper()
     runner = ToolRunner(tool)
     runner.run()
 

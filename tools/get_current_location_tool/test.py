@@ -7,8 +7,7 @@ print(project_root)
 sys.path.append(project_root)
 
 from engine.tool_framework.tool_run import run_tool
-from engine.tool_framework.tool_registry import ToolRegistry
-from engine.tool_framework.tool_caller import ToolCaller
+from engine.tool_framework import ToolRegistry, ToolCaller
 
 
 def main():
@@ -35,7 +34,11 @@ def main():
 
     # Call tool and handle result
     print("\nCalling location tool...")
-    result = caller.call_tool(tool_name="LocationTool", method="get_current_location")
+    result = caller.call_tool(
+        "get_current_location_tool", 
+        "get_current_location", 
+        {}
+    )
     
     if result:
         if 'error' in result:

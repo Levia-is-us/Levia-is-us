@@ -11,7 +11,7 @@ class ToolCaller:
     def __init__(self, registry: ToolRegistry):
         self.registry = registry
 
-    def call_tool(self, tool_name: str, method: str,kwargs: Dict) -> Optional[Dict]:
+    def call_tool(self, tool_name: str, method: str, kwargs: Dict) -> Optional[Dict]:
         """Call a specific tool method"""
         tool_path = self.registry.get_tool_path(tool_name)
         if not tool_path:
@@ -22,7 +22,6 @@ class ToolCaller:
             env = os.environ.copy()
             env['PYTHONPATH'] = os.path.dirname(os.path.dirname(tool_path))
             env['PYTHONIOENCODING'] = 'utf-8'
-            env['PYDEVD_DISABLE_FILE_VALIDATION'] = '1'  # Disable debugger warnings
             
             process = subprocess.Popen(
                 [sys.executable, tool_path],
@@ -32,44 +31,37 @@ class ToolCaller:
                 encoding='utf-8',
                 text=True,
                 bufsize=1,
-                universal_newlines=True,
                 env=env
             )
 
             # Prepare input data
             input_data = {
                 "method": method,
+                "args": kwargs
             }
-            print(f"kwargs: {kwargs}")
-            if kwargs:
-                input_data["args"] = kwargs
 
-            # Send input and get output
-            print(f"Sending input to tool: {input_data}")
-            stdout, stderr = process.communicate(json.dumps(input_data, ensure_ascii=False) + '\n')
+            # Send input and get output with timeout
+            try:
+                stdout, stderr = process.communicate(
+                    json.dumps(input_data, ensure_ascii=False) + '\n',
+                    timeout=30  # Add timeout
+                )
+                
+                if stderr:
+                    print(f"Tool stderr: {stderr}", file=sys.stderr)
 
-            # Filter out debugger warnings
-            real_stderr = '\n'.join(line for line in stderr.splitlines() 
-                                  if 'Debugger warning' not in line 
-                                  and 'PYDEVD' not in line
-                                  and line.strip())
+                if stdout:
+                    try:
+                        result = json.loads(stdout.strip())
+                        return result.get('result') if isinstance(result, dict) and 'result' in result else result
+                    except json.JSONDecodeError:
+                        print(f"Failed to parse tool output: {stdout!r}", file=sys.stderr)
+                        return None
 
-            if real_stderr:
-                print(f"Tool stderr: {real_stderr}", file=sys.stderr)
-
-            print(f"stdout: {stdout}")
-            if stdout:
-                try:
-                    cleaned_stdout = stdout.strip()
-                    result = json.loads(cleaned_stdout)
-                    print(f"Tool returned: {result}")
-                    return result.get('result') if isinstance(result, dict) and 'result' in result else result
-                except json.JSONDecodeError as e:
-                    print(f"Failed to parse tool output: {stdout!r}", file=sys.stderr)  # 使用!r显示原始字符串
-                    return None
-
-            print("Tool returned no output")
-            return None
+            except subprocess.TimeoutExpired:
+                process.kill()
+                print("Tool execution timed out", file=sys.stderr)
+                return None
 
         except Exception as e:
             print(f"Error calling tool: {str(e)}", file=sys.stderr)
