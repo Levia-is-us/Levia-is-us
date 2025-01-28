@@ -38,7 +38,7 @@ def get_initial_response(chat_messages: list) -> dict:
     """Get initial response from LLM"""
     prompt = [{"role": "system", "content": intents_system_prompt}] + chat_messages
     reply_info = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.7})
-    return eval(reply_info)
+    return extract_json_from_doc(reply_info)
 
 def handle_direct_answer(reply_info: dict) -> None:
     """Handle direct answer type response"""

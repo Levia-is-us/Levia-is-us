@@ -1,23 +1,25 @@
-from engine.prompt_provider import plan_maker_prompt
+import sys
+import os
+
+# Get absolute path of current file
+current_file_path = os.path.abspath(__file__)
+
+# Get project root path (3 levels up)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file_path))))
+
+# Add project root to Python path
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from engine.planner.checking_plan_prompt import check_plan_fittable_prompt
 from engine.llm_provider.llm import chat_completion
 from engine.flow.evaluator.evaluator_docgen_flow import extract_json_from_doc
-from engine.prompt_provider import  check_plan_fittable_prompt
 import json
-
-def create_execution_plan(intent: str) -> str:
-    """Create execution plan for given intent summary"""
-    prompt = [
-        {"role": "system", "content": plan_maker_prompt},
-        {"role": "user", "content": intent}
-    ]
-    plan = chat_completion(prompt, model="deepseek-chat", config={"temperature": 0.3})
-    print(f"plan: {plan}")
-    return plan
 
 def check_plan_sufficiency(intent: str, plan_intent: str, execution_records: list) -> bool:
     """Check if existing plan is sufficient for current intent"""
     print(f"intent: {intent}")
-    print(f"plan: {plan_intent}")
+    print(f"plan_intent: {plan_intent}")
     print(f"execution_records: {execution_records}")
     memories_check_prompt = [
         {"role": "system", "content": check_plan_fittable_prompt},
@@ -35,4 +37,13 @@ def check_plan_sufficiency(intent: str, plan_intent: str, execution_records: lis
     except:
         result = extract_json_from_doc(result)
     
-    return result["solution_sufficient"]['result'] in [True, "true"]
+    return result
+
+if __name__ == "__main__":
+    """put your intent, plan_intent, execution_records here"""
+    intent = "user intent"
+    plan_intent = "plan intent"
+    execution_records = "execution records"
+    result = check_plan_sufficiency(intent, plan_intent, execution_records)
+    print(f"result: {result}")
+
